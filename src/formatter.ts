@@ -143,3 +143,37 @@ export function prettyPrintTree(node: TreeNode, indent = "", isLast = true): str
 
   return lines.join("\n");
 }
+
+/**
+ * Colorize and format standard JSON structure with bold keys and typed syntax highlighting.
+ */
+export function colorizeJSON(data: any, space = 2): string {
+  const jsonStr = typeof data === "string" ? data : JSON.stringify(data, null, space);
+  if (!jsonStr) return "";
+
+  return jsonStr.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    (match) => {
+      // Object key with trailing colon
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          const keyName = match.slice(0, -1);
+          return pc.bold(pc.cyan(keyName)) + pc.dim(":");
+        }
+        // String value
+        return pc.green(match);
+      }
+      // Boolean value
+      if (/true|false/.test(match)) {
+        return pc.magenta(match);
+      }
+      // Null value
+      if (/null/.test(match)) {
+        return pc.dim(match);
+      }
+      // Number value
+      return pc.yellow(match);
+    }
+  );
+}
+

@@ -65,7 +65,16 @@ curl -s https://api.com/v2/config | jsonx diff config.v1.json
 jsonx diff a.json b.json --no-unchanged
 ```
 
-### 3. Non-Interactive Pretty-Print (for scripts & CI)
+### 3. Simple Colorized JSON View (jq-style with Bold Keys)
+```bash
+# Print syntax-highlighted standard JSON format
+jsonx --raw data.json
+
+# Piped stream
+curl -s https://api.github.com/users/octocat | jsonx --raw
+```
+
+### 4. Non-Interactive Pretty Tree Print (for scripts & CI)
 ```bash
 # Print formatted tree to stdout
 jsonx --print data.json
@@ -73,6 +82,7 @@ jsonx --print data.json
 # Set initial collapse depth (e.g. depth 2)
 jsonx data.json --depth 2 --print
 ```
+
 
 ---
 
@@ -112,11 +122,15 @@ const data = {
   active: true,
 };
 
-// 1. Pretty Print Formatted Tree String
+// 1. Syntax-Highlighted Standard JSON String
+const colored = colorizeJSON(data);
+console.log(colored);
+
+// 2. Pretty Print Formatted Tree String
 const tree = buildTree(data, "myService", "$", 0, 2);
 console.log(prettyPrintTree(tree));
 
-// 2. Compute Structural Diff
+// 3. Compute Structural Diff
 const oldConfig = { port: 8080, debug: true };
 const newConfig = { port: 8443, debug: true, ssl: true };
 
@@ -125,7 +139,7 @@ const stats = calculateDiffStats(diffTree);
 console.log(`Changes: +${stats.added} -${stats.removed} ~${stats.modified}`);
 console.log(prettyPrintDiff(diffTree));
 
-// 3. Launch Interactive TUI Programmatically
+// 4. Launch Interactive TUI Programmatically
 const viewer = new InteractiveViewer(tree);
 await viewer.start();
 ```
@@ -136,12 +150,15 @@ await viewer.start();
 
 | Option | Shorthand | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `--raw` | `-r` | `false` | Print standard syntax-highlighted JSON (bold keys & typed colors) |
+| `--format <type>` | `-F` | `"tree"` | Output format (`tree` or `json`) |
 | `--print` | `-p` | `false` | Non-interactive formatted print to stdout |
 | `--depth <number>` | `-d` | `2` | Initial tree expansion depth |
 | `--search <query>` | `-s` | `""` | Initial filter query for keys/values |
 | `--no-unchanged` | | `false` | Hide unchanged nodes in diff output |
 | `--version` | `-v` | | Output version |
 | `--help` | `-h` | | Display help menu |
+
 
 ---
 

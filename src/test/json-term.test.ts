@@ -87,3 +87,15 @@ test("prettyPrintDiff outputs color-coded additions and deletions", () => {
 test("copyToClipboard is exported as callable async function", () => {
   assert.strictEqual(typeof copyToClipboard, "function");
 });
+
+test("colorizeJSON highlights standard valid JSON format", async () => {
+  const { colorizeJSON } = await import("../index.js");
+  const json = { name: "Alice", count: 5, valid: true, meta: null };
+  const colored = colorizeJSON(json);
+  assert.ok(colored.includes("name"));
+  assert.ok(colored.includes("Alice"));
+  assert.ok(colored.includes("5"));
+  assert.ok(colored.includes("true"));
+  assert.ok(colored.includes("null"));
+});
+

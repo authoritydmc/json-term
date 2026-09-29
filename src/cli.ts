@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import fs from "fs";
 import pc from "picocolors";
-import { buildTree, prettyPrintTree } from "./formatter.js";
+import { buildTree, prettyPrintTree, colorizeJSON } from "./formatter.js";
 import { diffJSON, prettyPrintDiff, calculateDiffStats } from "./differ.js";
 import { InteractiveViewer } from "./interactive.js";
 
@@ -40,9 +40,11 @@ async function main() {
   program
     .name("json-term")
     .description("High-fidelity interactive terminal JSON viewer, collapsible tree explorer, type syntax highlighter, and structural diff tool.")
-    .version("1.0.0", "-v, --version", "Output the current version")
+    .version("1.1.0", "-v, --version", "Output the current version")
     .argument("[file]", "JSON file to view or compare")
-    .option("-p, --print", "Print formatted non-interactive tree to stdout", false)
+    .option("-p, --print", "Print formatted non-interactive output to stdout", false)
+    .option("-F, --format <format>", "Output format: 'tree' or 'json'", "tree")
+    .option("-r, --raw", "Print standard syntax-highlighted JSON (shorthand for --format json --print)", false)
     .option("-d, --depth <number>", "Initial tree expansion depth", (val) => parseInt(val, 10), 2)
     .option("-s, --search <query>", "Filter tree by key or value query")
     .action(async (fileArg, options) => {
@@ -64,6 +66,13 @@ async function main() {
         }
 
         const data = parseJSON(raw, fileArg || "stdin");
+
+        // If raw/json format requested, print colorized JSON directly
+        if (options.raw || options.format === "json") {
+          console.log(colorizeJSON(data));
+          return;
+        }
+
         const tree = buildTree(data, fileArg || "root", "$", 0, options.depth);
 
         if (options.print || !process.stdin.isTTY) {
