@@ -1,0 +1,9 @@
+{
+  "name": "API Service",
+  "port": 3000,
+  "enabled": true,
+  "tags": [
+    "v1",
+    "legacy"
+  ]
+}
