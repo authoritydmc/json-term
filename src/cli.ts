@@ -34,38 +34,58 @@ function parseJSON(raw: string, label = "Input"): any {
   }
 }
 
+async function resolveJSONInput(inputArg?: string): Promise<{ raw: string; label: string }> {
+  if (inputArg) {
+    const trimmed = inputArg.trim();
+    // 1. Direct inline JSON check
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      return { raw: trimmed, label: "inline JSON" };
+    }
+    // 2. Existing file check
+    if (fs.existsSync(inputArg)) {
+      const raw = await fs.promises.readFile(inputArg, "utf-8");
+      return { raw, label: inputArg };
+    }
+    // 3. Try parsing as generic JSON value (number, boolean, string)
+    try {
+      JSON.parse(trimmed);
+      return { raw: trimmed, label: "inline JSON" };
+    } catch {}
+
+    throw new Error(`File not found or invalid inline JSON: ${inputArg}`);
+  }
+
+  // 4. Stdin fallback
+  const stdinData = await readStdin();
+  return { raw: stdinData, label: "stdin" };
+}
+
 async function main() {
   const program = new Command();
 
   program
     .name("json-term")
     .description("High-fidelity interactive terminal JSON viewer, collapsible tree explorer, type syntax highlighter, and structural diff tool.")
-    .version("1.1.0", "-v, --version", "Output the current version")
-    .argument("[file]", "JSON file to view or compare")
+    .version("1.2.0", "-v, --version", "Output the current version")
+    .argument("[input]", "JSON file path, inline JSON string, or piped stdin")
     .option("-p, --print", "Print formatted non-interactive output to stdout", false)
     .option("-F, --format <format>", "Output format: 'tree' or 'json'", "tree")
     .option("-r, --raw", "Print standard syntax-highlighted JSON (shorthand for --format json --print)", false)
     .option("-d, --depth <number>", "Initial tree expansion depth", (val) => parseInt(val, 10), 2)
     .option("-s, --search <query>", "Filter tree by key or value query")
-    .action(async (fileArg, options) => {
+    .action(async (inputArg, options) => {
       try {
-        let raw = "";
-        if (fileArg) {
-          if (!fs.existsSync(fileArg)) {
-            console.error(pc.red(`Error: File not found: ${fileArg}`));
-            process.exit(1);
-          }
-          raw = await fs.promises.readFile(fileArg, "utf-8");
-        } else {
-          raw = await readStdin();
-        }
+        const { raw, label } = await resolveJSONInput(inputArg);
 
         if (!raw) {
           program.help();
           process.exit(1);
         }
 
-        const data = parseJSON(raw, fileArg || "stdin");
+        const data = parseJSON(raw, label);
 
         // If raw/json format requested, print colorized JSON directly
         if (options.raw || options.format === "json") {
@@ -73,7 +93,7 @@ async function main() {
           return;
         }
 
-        const tree = buildTree(data, fileArg || "root", "$", 0, options.depth);
+        const tree = buildTree(data, label, "$", 0, options.depth);
 
         if (options.print || !process.stdin.isTTY) {
           console.log(prettyPrintTree(tree));
@@ -89,38 +109,28 @@ async function main() {
 
   // Diff subcommand
   program
-    .command("diff <fileA> [fileB]")
-    .description("Structural JSON diff between two files or stdin")
+    .command("diff <inputA> [inputB]")
+    .description("Structural JSON diff between files, inline JSON strings, or stdin")
     .option("-p, --print", "Print formatted non-interactive diff to stdout", false)
     .option("-d, --depth <number>", "Initial expansion depth", (val) => parseInt(val, 10), 3)
     .option("--no-unchanged", "Hide unchanged nodes from the diff view", false)
-    .action(async (fileA, fileB, diffOptions) => {
+    .action(async (inputA, inputB, diffOptions) => {
       try {
-        if (!fs.existsSync(fileA)) {
-          console.error(pc.red(`Error: File not found: ${fileA}`));
+        const itemA = await resolveJSONInput(inputA);
+        if (!itemA.raw) {
+          console.error(pc.red("Error: Please provide valid first JSON input (file or string)."));
           process.exit(1);
         }
-        const rawA = await fs.promises.readFile(fileA, "utf-8");
-        const dataA = parseJSON(rawA, fileA);
+        const dataA = parseJSON(itemA.raw, itemA.label);
 
-        let dataB: any;
-        if (fileB) {
-          if (!fs.existsSync(fileB)) {
-            console.error(pc.red(`Error: File not found: ${fileB}`));
-            process.exit(1);
-          }
-          const rawB = await fs.promises.readFile(fileB, "utf-8");
-          dataB = parseJSON(rawB, fileB);
-        } else {
-          const stdinData = await readStdin();
-          if (!stdinData) {
-            console.error(pc.red("Error: Please specify second file or pipe JSON via stdin."));
-            process.exit(1);
-          }
-          dataB = parseJSON(stdinData, "stdin");
+        const itemB = await resolveJSONInput(inputB);
+        if (!itemB.raw) {
+          console.error(pc.red("Error: Please specify second JSON input (file, string, or piped stdin)."));
+          process.exit(1);
         }
+        const dataB = parseJSON(itemB.raw, itemB.label);
 
-        const diffTree = diffJSON(dataA, dataB, `${fileA} ↔ ${fileB || "stdin"}`, "$", 0, diffOptions.depth);
+        const diffTree = diffJSON(dataA, dataB, `${itemA.label} ↔ ${itemB.label}`, "$", 0, diffOptions.depth);
         const stats = calculateDiffStats(diffTree);
 
         if (diffOptions.print || !process.stdin.isTTY) {

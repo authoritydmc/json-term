@@ -49,8 +49,14 @@ npm install json-term
 # View local JSON file
 jsonx package.json
 
+# Directly parse inline JSON string
+jsonx '{"service": "auth-api", "port": 443, "active": true, "tags": ["prod", "v2"]}'
+
 # View piped API response
 curl -s https://api.github.com/repos/nodejs/node | jsonx
+
+# Echo / pipe JSON string
+echo '{"status": 200, "data": [1, 2, 3]}' | jsonx
 ```
 
 ### 2. Structural JSON Diffing
@@ -58,7 +64,10 @@ curl -s https://api.github.com/repos/nodejs/node | jsonx
 # Compare two JSON configuration files
 jsonx diff config.old.json config.new.json
 
-# Diff against piped stdin
+# Diff two direct inline JSON strings
+jsonx diff '{"port": 8080, "debug": true}' '{"port": 8443, "debug": true, "ssl": true}'
+
+# Diff file against piped stdin
 curl -s https://api.com/v2/config | jsonx diff config.v1.json
 
 # Hide unchanged lines in diff
@@ -67,8 +76,11 @@ jsonx diff a.json b.json --no-unchanged
 
 ### 3. Simple Colorized JSON View (jq-style with Bold Keys)
 ```bash
-# Print syntax-highlighted standard JSON format
+# Print syntax-highlighted standard JSON format from file
 jsonx --raw data.json
+
+# Print syntax-highlighted direct JSON string
+jsonx --raw '{"user": "alice", "roles": ["admin", "developer"]}'
 
 # Piped stream
 curl -s https://api.github.com/users/octocat | jsonx --raw
@@ -79,9 +91,13 @@ curl -s https://api.github.com/users/octocat | jsonx --raw
 # Print formatted tree to stdout
 jsonx --print data.json
 
+# Pretty print inline JSON string
+jsonx --print '{"name": "test", "count": 42}'
+
 # Set initial collapse depth (e.g. depth 2)
 jsonx data.json --depth 2 --print
 ```
+
 
 
 ---
